@@ -1,2 +1,4 @@
 openjdk.zip filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
+Docker[[:space:]]Desktop[[:space:]]Installer.exe filter=lfs diff=lfs merge=lfs -text
+Docker.zip filter=lfs diff=lfs merge=lfs -text
