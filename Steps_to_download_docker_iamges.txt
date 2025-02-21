@@ -1,0 +1,142 @@
+1. more  Docker_Key.txt | docker login pega-docker.downloads.pega.com --username=reg-950498 --password-stdin
+
+2. curl -X GET https://pega-docker.downloads.pega.com/v2/_catalog -H "X-JFrog-Art-Api:cmVmdGtuOjAxOjAwMDAwMDAwMDA6WVdBU3lyV0QwNmV6Ymp0QnNuNU1sMTh5bmpI"
+
+3. curl -X GET "https://pega-docker.downloads.pega.com/v2/platform/pega/tags/list" -H "X-JFrog-Art-Api:cmVmdGtuOjAxOjAwMDAwMDAwMDA6WVdBU3lyV0QwNmV6Ymp0QnNuNU1sMTh5bmpI"
+
+4. docker pull pega-docker.downloads.pega.com/platform/pega:24.1.1
+
+5. curl -X GET "https://pega-docker.downloads.pega.com/v2/platform/installer/tags/list" -H "X-JFrog-Art-Api:cmVmdGtuOjAxOjAwMDAwMDAwMDA6WVdBU3lyV0QwNmV6Ymp0QnNuNU1sMTh5bmpI"
+
+6. docker pull pega-docker.downloads.pega.com/platform/installer:24.1.1
+
+7. curl -X GET "https://pega-docker.downloads.pega.com/v2/platform-services/search-n-reporting-service-aws/tags/list" -H "X-JFrog-Art-Api:cmVmdGtuOjAxOjAwMDAwMDAwMDA6WVdBU3lyV0QwNmV6Ymp0QnNuNU1sMTh5bmpI"
+
+8. docker pull pega-docker.downloads.pega.com/platform-services/search-n-reporting-service-aws:1.32.2
+
+9. curl -X GET "https://pega-docker.downloads.pega.com/v2/platform/clustering-service/tags/list" -H "X-JFrog-Art-Api:cmVmdGtuOjAxOjAwMDAwMDAwMDA6WVdBU3lyV0QwNmV6Ymp0QnNuNU1sMTh5bmpI"
+
+10. docker pull pega-docker.downloads.pega.com/platform/clustering-service:latest
+
+
+
+Tag the images:
+
+docker tag test-eks-efinance-dev:latest 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:latest
+
+1. docker tag pega-docker.downloads.pega.com/platform/pega:24.1.1 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-platform-24.1.1
+2. docker tag pega-docker.downloads.pega.com/platform/installer:24.1.1 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-installer-24.1.1
+3. docker tag pega-docker.downloads.pega.com/platform-services/search-n-reporting-service-aws:1.32.2 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-srs-1.32.2
+4. docker tag pega-docker.downloads.pega.com/platform/clustering-service:latest 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-clustering-service-latest
+
+
+
+To Generate Token: 
+Login: $password = aws ecr get-login-password --region ap-southeast-1; docker login --username AWS --password $password 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com
+
+
+Push Images:
+
+1. docker push 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev/pega:24.1.1
+2. docker push 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-installer-24.1.1
+3. docker push 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-srs-1.32.2
+4. docker push 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-clustering-service-latest
+
+docker push 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:latest
+
+
+docker tag pega-docker.downloads.pega.com/platform/pega:24.1.1 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-platform-24.1.1
+
+docker push 285589230782.dkr.ecr.ap-southeast-1.amazonaws.com/test-eks-efinance-dev:pega-platform-24.1.1
+
+
+
+
+
+--> Install the addoons:
+
+$ kubectl create namespace mypega-EKS-demo
+
+$ kubectl create namespace pegaaddons
+
+$helm install addons pega/addons --namespace pegaaddons --values addons.yaml
+
+--> Install the backing services:
+
+helm inspect values pega/backingservices > backingservices.yaml
+
+make es-prerequisite NAMESPACE=mypega-eks-demo ELASTICSEARCH_VERSION=7.17.9
+
+helm install backingservices pega/backingservices --namespace mypega-eks-demo --values backingservices.yaml
+
+
+---> Install the pega services:
+
+ helm inspect values pega/pega > pega.yaml
+ Create MSK (Kafka)
+ 
+ helm install mypega-eks-demo pega/pega --namespace mypega-eks-demo --values pega.yaml --set global.actions.execute=install-deploy
+ 
+ helm uninstall mypega-eks-demo --namespace=mypega-eks-demo
+
+aws eks update-nodegroup-config --cluster-name test-eks --nodegroup-name example-20241009033437914200000001 --scaling-config minSize=4,maxSize=4,desiredSize=4 
+
+INcreaed the Nodes to 7
+
+Changed the PVC to gp2
+
+Changed the deployments pega-batch and pega web and added the hazelcast username and password
+
+Command:
+To enter into the pod
+ kubectl exec -it pega-batch-57cf54b95b-zlkvr --namespace=mypega-eks-demo -- bash
+ 
+
+Created the Provisioned kafka Cluster.
+Created the security group.
+I changed the PVC storageclass to gp2.
+Updated the pega.yaml with new values.
+Updated the pega-web ingress and removed the host part as below:
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+annotations:
+  alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig":
+   { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+  alb.ingress.kubernetes.io/backend-protocol: HTTPS
+  alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+  alb.ingress.kubernetes.io/scheme: internet-facing
+  alb.ingress.kubernetes.io/target-group-attributes: load_balancing.algorithm.type=least_outstanding_requests,stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=1020
+  alb.ingress.kubernetes.io/target-type: ip
+  kubernetes.io/ingress.class: alb
+  meta.helm.sh/release-name: mypega-eks-demo
+  meta.helm.sh/release-namespace: mypega-eks-demo
+creationTimestamp: "2024-10-22T07:22:38Z"
+finalizers:
+- ingress.k8s.aws/resources
+generation: 1
+labels:
+  app.kubernetes.io/managed-by: Helm
+name: pega-web
+namespace: mypega-eks-demo
+resourceVersion: "6058922"
+uid: 2563b6e7-515e-4960-8ea5-5df29aca057c
+spec:
+rules:
+- http:
+   paths:
+   - backend:
+     service:
+      name: pega-web
+      port:
+       number: 443
+    pathType: ImplementationSpecific
+status:
+loadBalancer: {}
+
+********************************************************************************
+Updated the pega.yaml with stream replication fator to 2 as w have only 2 brokers.
+
+
+
+
